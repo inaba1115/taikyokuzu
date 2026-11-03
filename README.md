@@ -24,7 +24,7 @@
 - lightgbm_screeningだけやれば良い
 
 # やること
-- 1銘柄でmacdを出すようにする
+- 1銘柄でmacdを出すようにする -> now
   - APIでok
   - plotもやる
 
