@@ -4,7 +4,6 @@
 - jquantsからapiでデータ取るか、bulkで取るか
   - adjがapiしかないので、一旦apiで良いとする
 - synthetic -> 後回し
-  - gaussianのみ用意
 - plot_candlestickは欲しい
 
 - 金利とかコモディティとかのデータと合わせたい
@@ -24,13 +23,19 @@
 ## alpha
 - lightgbm_screeningだけやれば良い
 
-# なので、
-- 1銘柄でmacdをだすようにする
+# やること
+- 1銘柄でmacdを出すようにする
   - APIでok
-  - plotできる
+  - plotもやる
+
 - 全銘柄でmacdのゴールデンクロスを抽出できるようにする
+  - macdでのスクリーニング
+
 - lightgbm_screeningできるようにする
-- データ、feature増やす
+
+- データ、feature増やす -> ここに時間かけるでok
   - 金利、コモディティ, ...
   - RSI、CAPM, ブルベア, ...
+  - dfデータの作り方を工夫する必要あると思われる
+
 - portfolio, backtest
