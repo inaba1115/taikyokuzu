@@ -8,3 +8,17 @@ wheels/
 
 # Virtual environments
 .venv
+
+# caches
+__marimo__/
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+.ipynb_checkpoints/
+
+# jupyter
+*.ipynb
+
+.DS_Store
+.vscode/
+tmp/
