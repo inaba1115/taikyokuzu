@@ -138,11 +138,8 @@ def draw_candlestick(
     )
 
     open_values = data[open_column].to_numpy(dtype=float)
-
     high_values = data[high_column].to_numpy(dtype=float)
-
     low_values = data[low_column].to_numpy(dtype=float)
-
     close_values = data[close_column].to_numpy(dtype=float)
 
     x = np.arange(len(data))
