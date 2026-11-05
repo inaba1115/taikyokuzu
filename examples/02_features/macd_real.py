@@ -36,11 +36,11 @@ df["MACD"] = macd_result.macd
 df["Signal"] = macd_result.signal
 
 df["MACD>Signal"] = (df["MACD"] > df["Signal"]).astype(bool)
-df["Signal>MACD+1"] = df["Signal>MACD"].shift(1).fillna(False).astype(bool)
-df["GoldenCross"] = np.where(df["MACD>Signal"] & df["Signal>MACD+1"], 1, 0)
-
 df["Signal>MACD"] = (df["Signal"] > df["MACD"]).astype(bool)
+df["Signal>MACD+1"] = df["Signal>MACD"].shift(1).fillna(False).astype(bool)
 df["MACD>Signal+1"] = df["MACD>Signal"].shift(1).fillna(False).astype(bool)
+
+df["GoldenCross"] = np.where(df["MACD>Signal"] & df["Signal>MACD+1"], 1, 0)
 df["DeathCross"] = np.where(df["Signal>MACD"] & df["MACD>Signal+1"], 1, 0)
 
 print("J-Quants real daily bars:")
