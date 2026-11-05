@@ -250,11 +250,7 @@ def set_date_axis(
 
     ax.set_xticks(positions)
 
-    ax.set_xticklabels(
-        labels,
-        rotation=45,
-        ha="right",
-    )
+    ax.set_xticklabels(labels, rotation=45, ha="right")
 
     ax.set_xlabel("Date")
 
@@ -355,13 +351,7 @@ def _prepare_candlestick_data(
     if (high_values < np.maximum(open_values, close_values)).any():
         raise ValueError("high must be greater than or equal to open and close")
 
-    if (
-        low_values
-        > np.minimum(
-            open_values,
-            close_values,
-        )
-    ).any():
+    if (low_values > np.minimum(open_values, close_values)).any():
         raise ValueError("low must be less than or equal to open and close")
 
     if (low_values > high_values).any():
