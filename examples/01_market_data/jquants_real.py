@@ -1,9 +1,14 @@
 import jquantsapi
 import matplotlib.pyplot as plt
+from joblib import Memory
 
 from taikyokuzu.plotting import plot_candlestick
 
 client = jquantsapi.ClientV2()
+
+cachedir = "./_joblib_cache"
+mem = Memory(cachedir, verbose=2)
+client.get_eq_bars_daily = mem.cache(client.get_eq_bars_daily)
 
 code = "72030"  # Toyota
 from_yyyymmdd = "2025-01-01"

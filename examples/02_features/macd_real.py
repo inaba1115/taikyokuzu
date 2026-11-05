@@ -1,33 +1,25 @@
-import os
-
 import jquantsapi
 import matplotlib.pyplot as plt
-import pandas as pd
+from joblib import Memory
 
 from taikyokuzu.features import macd
 from taikyokuzu.plotting import draw_candlestick, draw_macd
+
+client = jquantsapi.ClientV2()
+
+cachedir = "./_joblib_cache"
+mem = Memory(cachedir, verbose=2)
+client.get_eq_bars_daily = mem.cache(client.get_eq_bars_daily)
 
 code = "72030"  # Toyota
 from_yyyymmdd = "2025-01-01"
 to_yyyymmdd = "2025-03-31"
 
-cache = f"{code}_{from_yyyymmdd}_{to_yyyymmdd}.pkl"
-
-
-if os.path.isfile(cache):
-    print(f"use cache: {cache}")
-    bars = pd.read_pickle(cache)
-else:
-    client = jquantsapi.ClientV2()
-
-    bars = client.get_eq_bars_daily(
-        code=code,
-        from_yyyymmdd=from_yyyymmdd,
-        to_yyyymmdd=to_yyyymmdd,
-    )
-
-    print(f"save cache: {cache}")
-    bars.to_pickle(cache)
+bars = client.get_eq_bars_daily(
+    code=code,
+    from_yyyymmdd=from_yyyymmdd,
+    to_yyyymmdd=to_yyyymmdd,
+)
 
 macd_result = macd(bars["AdjC"])
 
@@ -36,6 +28,9 @@ print(bars.head())
 print()
 print("Rows:", len(bars))
 print("period:", bars["Date"].min(), "to", bars["Date"].max())
+print()
+print("MACD")
+print(macd_result.macd.head())
 
 fig, axes = plt.subplots(
     nrows=2, ncols=1, figsize=(12, 8), gridspec_kw={"height_ratios": [2, 1]}
