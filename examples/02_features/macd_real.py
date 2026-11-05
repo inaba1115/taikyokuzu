@@ -53,10 +53,16 @@ print("MACD")
 print(macd_result.macd.head())
 
 fig, axes = plt.subplots(
-    nrows=2, ncols=1, figsize=(12, 8), gridspec_kw={"height_ratios": [2, 1]}
+    nrows=2,
+    ncols=1,
+    figsize=(12, 8),
+    gridspec_kw={"height_ratios": [2, 1]},
+    sharex=True,
 )
 
 draw_candlestick(bars, ax=axes[0], code=code, adjusted=True)
+axes[0].set_xlabel("")
+
 draw_macd(macd_result, ax=axes[1])
 
 fig.tight_layout()
