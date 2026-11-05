@@ -1,5 +1,7 @@
 import jquantsapi
 import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
 from joblib import Memory
 
 from taikyokuzu.features import macd
@@ -23,11 +25,29 @@ bars = client.get_eq_bars_daily(
 
 macd_result = macd(bars["AdjC"])
 
+df = pd.DataFrame(
+    {
+        "Date": bars["Date"],
+        "AdjC": bars["AdjC"],
+    }
+)
+
+df["MACD"] = macd_result.macd
+df["Signal"] = macd_result.signal
+
+df["MACD>Signal"] = (df["MACD"] > df["Signal"]).astype(bool)
+df["Signal>MACD+1"] = df["Signal>MACD"].shift(1).fillna(False).astype(bool)
+df["GoldenCross"] = np.where(df["MACD>Signal"] & df["Signal>MACD+1"], 1, 0)
+
+df["Signal>MACD"] = (df["Signal"] > df["MACD"]).astype(bool)
+df["MACD>Signal+1"] = df["MACD>Signal"].shift(1).fillna(False).astype(bool)
+df["DeathCross"] = np.where(df["Signal>MACD"] & df["MACD>Signal+1"], 1, 0)
+
 print("J-Quants real daily bars:")
-print(bars.head())
+print(df.head(100))
 print()
-print("Rows:", len(bars))
-print("period:", bars["Date"].min(), "to", bars["Date"].max())
+print("Rows:", len(df))
+print("period:", df["Date"].min(), "to", df["Date"].max())
 print()
 print("MACD")
 print(macd_result.macd.head())
