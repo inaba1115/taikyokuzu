@@ -22,3 +22,5 @@ __marimo__/
 .DS_Store
 .vscode/
 tmp/
+
+_joblib_cache/
