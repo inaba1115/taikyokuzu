@@ -11,7 +11,7 @@ client = jquantsapi.ClientV2()
 
 # cache設定
 cachedir = "./_joblib_cache"
-mem = Memory(cachedir, verbose=2)
+mem = Memory(cachedir, verbose=0)
 client.get_eq_master = mem.cache(client.get_eq_master)
 client.get_eq_bars_daily = mem.cache(client.get_eq_bars_daily)
 
@@ -29,7 +29,7 @@ eq_master_df = client.get_eq_master(date=to_datetime.date())
 eq_master_df = eq_master_df[
     eq_master_df["Code"].isin(["94330", "72590", "51010", "92780", "94380"])
 ]  # 銘柄の数が限られているならこういった書き方で良い。全銘柄だと時間かかるので別のやり方が必要
-print(eq_master_df)
+print(eq_master_df[["Code", "CoName"]])
 
 # 株価データ取得
 eq_bars_dict = {}
@@ -70,4 +70,4 @@ for _, row in eq_master_df.iterrows():
     if macd_df["GoldenCross"][str(to_datetime.date())] == 1:
         macd_screen_results.append(row["Code"])
 
-print(macd_screen_results)
+print("GoldenCross:", macd_screen_results)
