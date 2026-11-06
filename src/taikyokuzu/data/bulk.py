@@ -59,7 +59,9 @@ def load_bulk_data(
         to_date=str(end_dt),
     )
     if listing.empty:
-        raise ValueError(f"No available Bulk files for {start_dt.date()}..{end_dt.date()}")
+        raise ValueError(
+            f"No available Bulk files for {start_dt.date()}..{end_dt.date()}"
+        )
 
     mem = Memory(cache_dir, verbose=0)
     cached_fetch = mem.cache(_fetch_bulk_file, ignore=["client"])
@@ -71,7 +73,7 @@ def load_bulk_data(
         frame = cached_fetch(
             key=str(item.Key),
             last_modified=str(item.LastModified),
-            size=int(item.Size),
+            size=int(item.Size),  # type: ignore
             client=client,
         )
         frames.append(frame)
@@ -79,16 +81,18 @@ def load_bulk_data(
     bars = pd.concat(frames, ignore_index=True)
     if not {"Date", "Code", "AdjFactor"}.issubset(bars.columns):
         raise ValueError("Bulk CSV must include Date, Code and AdjFactor")
-    
+
     bars["Date"] = pd.to_datetime(bars["Date"])
 
     bars["Code"] = bars["Code"].astype("string")
 
     bars = bars.loc[bars["Date"].between(start_dt, end_dt)]
-    
+
     if bars.empty:
-        raise ValueError(f"Bulk files contained no rows for {start_dt.date()}..{end_dt.date()}")
-    
+        raise ValueError(
+            f"Bulk files contained no rows for {start_dt.date()}..{end_dt.date()}"
+        )
+
     return (
         bars.drop_duplicates(subset=["Code", "Date"], keep="last")
         .sort_values(["Code", "Date"])
