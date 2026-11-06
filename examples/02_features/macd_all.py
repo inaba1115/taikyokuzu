@@ -15,18 +15,19 @@ mem = Memory(cache_dir, verbose=2)
 client.get_eq_master = mem.cache(client.get_eq_master)
 
 # 日付
-target_date = pd.Timestamp("2026-11-05")
+target_date = pd.Timestamp("2026-11-06")
 from_date = target_date - pd.Timedelta(days=300)  # 200営業日ほど欲しいため長めにとる
 
 # 上場銘柄一覧
 eq_master = client.get_eq_master(date=target_date.date())
 
+# 国内普通株式のみ(内国株券 & 5桁の証券コードの末尾が0なら普通株式)
+eq_master = eq_master.loc[
+    (eq_master["ProdCat"] == "011") & (eq_master["Code"].str.endswith("0"))
+]
+
 # 銘柄名の辞書を作成
-code_to_name = (
-    eq_master.assign(Code=lambda df: df["Code"].astype("string"))
-    .set_index("Code")["CoName"]
-    .to_dict()
-)
+code_to_name = eq_master.set_index("Code")["CoName"].to_dict()
 
 # 日足データ取得(bulk)
 raw_df = load_bulk_data(
@@ -38,9 +39,11 @@ raw_df = load_bulk_data(
 )
 adjusted_df = adjust_prices(raw_df)
 
-# 基準日に終値が存在する銘柄
+# 基準日に終値が存在する銘柄 & eq_masterに存在
 valid_codes = adjusted_df.loc[
-    (adjusted_df["Date"] == target_date) & adjusted_df["AdjC"].notna(),
+    (adjusted_df["Date"] == target_date)
+    & adjusted_df["AdjC"].notna()
+    & adjusted_df["Code"].isin(eq_master["Code"]),
     "Code",
 ]
 
