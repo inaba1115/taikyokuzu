@@ -5,6 +5,10 @@ from joblib import Memory
 from taikyokuzu.data import adjust_prices, load_bulk_data
 from taikyokuzu.features import macd
 
+pd.set_option("display.unicode.east_asian_width", True)
+pd.set_option("display.max_colwidth", None)
+# pd.set_option("display.max_columns", None)
+
 client = jquantsapi.ClientV2()
 cache_dir = "./_joblib_cache"
 mem = Memory(cache_dir, verbose=2)
@@ -66,7 +70,7 @@ for code in valid_codes:
         & (macd_df["MACD"].shift(1) <= macd_df["Signal"].shift(1))
     ).astype(int)
 
-    if macd_df["GoldenCross"][target_date] == 1:
+    if macd_df.at[target_date, "GoldenCross"] == 1:
         co_name = eq_master.loc[eq_master["Code"] == code, "CoName"].values[0]
         adj_vo = code_df.at[target_date, "AdjVo"]
 
@@ -80,5 +84,5 @@ macd_screening_df = macd_screening_df.sort_values(
 )  # 出来高が多い順で見る
 
 print("MACD GoldenCross:")
-print(macd_screening_df.head())
+print(macd_screening_df.head(30))
 print("Total:", len(macd_screening_df))
