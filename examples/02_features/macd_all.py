@@ -21,6 +21,13 @@ from_date = target_date - pd.Timedelta(days=300)  # 200営業日ほど欲しい�
 # 上場銘柄一覧
 eq_master = client.get_eq_master(date=target_date.date())
 
+# 銘柄名の辞書を作成
+code_to_name = (
+    eq_master.assign(Code=lambda df: df["Code"].astype("string"))
+    .set_index("Code")["CoName"]
+    .to_dict()
+)
+
 # 日足データ取得(bulk)
 raw_df = load_bulk_data(
     start=from_date,
@@ -51,37 +58,65 @@ screening_df = (
 
 macd_screening_results = []
 
-for code in valid_codes:
-    code_df = screening_df[screening_df["Code"] == code].set_index("Date")
+for code, code_df in screening_df.groupby("Code", sort=False):
+    # データ不足の銘柄を除外
+    if len(code_df) < 100:
+        continue
+
+    code_df = code_df.set_index("Date")
 
     macd_result = macd(code_df["AdjC"], fast=12, slow=26, signal=9)
 
     macd_df = pd.DataFrame(
         {
-            "AdjC": code_df["AdjC"],
             "MACD": macd_result.macd,
             "Signal": macd_result.signal,
+        },
+        index=code_df.index,
+    )
+
+    # 最終2営業日を比較
+    prev = macd_df.iloc[-2]
+    curr = macd_df.iloc[-1]
+
+    golden_cross = (prev["MACD"] <= prev["Signal"]) and (curr["MACD"] > curr["Signal"])
+
+    # NOTE: ゴールデンクロスが発生した日付と、エントリー用の日付は別で扱うのがおすすめ
+    # entry_signal = golden_cross.shift(1).fillna(False) といったイメージ
+
+    if not golden_cross:
+        continue
+
+    # 銘柄名が取得できなければ銘柄コードで代用
+    co_name = code_to_name.get(code, code)
+
+    macd_screening_results.append(
+        {
+            "Code": code,
+            "CoName": co_name,
+            "AdjC": code_df["AdjC"].iloc[-1],
+            "MACD": curr["MACD"],
+            "Signal": curr["Signal"],
+            "AdjVo": code_df["AdjVo"].iloc[-1],
+            "Va": code_df["Va"].iloc[-1],
         }
     )
 
-    # NOTE: 次の日に1が立つようにしたほうが良いかも
-    macd_df["GoldenCross"] = (
-        (macd_df["MACD"] > macd_df["Signal"])
-        & (macd_df["MACD"].shift(1) <= macd_df["Signal"].shift(1))
-    ).astype(int)
+# 0件の場合にも対応
+macd_screening_df = pd.DataFrame(
+    macd_screening_results,
+    columns=[
+        "Code",
+        "CoName",
+        "AdjC",
+        "MACD",
+        "Signal",
+        "AdjVo",
+        "Va",
+    ],
+)
 
-    if macd_df.at[target_date, "GoldenCross"] == 1:
-        co_name = eq_master.loc[eq_master["Code"] == code, "CoName"].values[0]
-        adj_vo = code_df.at[target_date, "AdjVo"]
-
-        macd_screening_results.append(
-            {"Code": code, "CoName": co_name, "AdjVo": adj_vo}
-        )
-
-macd_screening_df = pd.DataFrame(macd_screening_results)
-macd_screening_df = macd_screening_df.sort_values(
-    by="AdjVo", ascending=False
-)  # 出来高が多い順で見る
+macd_screening_df = macd_screening_df.sort_values(by="Va", ascending=False)
 
 print("MACD GoldenCross:")
 print(macd_screening_df.head(30))
