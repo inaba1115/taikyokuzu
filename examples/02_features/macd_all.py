@@ -1,6 +1,3 @@
-from datetime import datetime, timedelta
-from zoneinfo import ZoneInfo
-
 import jquantsapi
 import pandas as pd
 
@@ -10,32 +7,42 @@ from taikyokuzu.features import macd
 client = jquantsapi.ClientV2()
 cache_dir = "./_joblib_cache"
 
-# 日付関連
-to_datetime = datetime(2026, 11, 5, tzinfo=ZoneInfo("Asia/Tokyo"))
-backword_days = 300  # 200営業日ほど欲しいため長めにとる
-from_datetime = to_datetime - timedelta(days=backword_days)
+# 日付
+target_date = pd.Timestamp("2026-11-05")
+from_date = target_date - pd.Timedelta(days=300)  # 200営業日ほど欲しいため長めにとる
 
 # データ取得(bulk)
 raw_df = load_bulk_data(
-    start=from_datetime.date(),
-    end=to_datetime.date(),
+    start=from_date,
+    end=target_date,
     client=client,
     cache_dir=cache_dir,
     cache_verbose=2,
 )
 adjusted_df = adjust_prices(raw_df)
 
-# codes = adjusted_df["Code"].unique()
-# codes = ["13050"]
-# codes = ["94330", "72590", "51010", "92780", "94380"]
-codes = ["136A0"]
+# 基準日に終値が存在する銘柄
+valid_codes = adjusted_df.loc[
+    (adjusted_df["Date"] == target_date) & adjusted_df["AdjC"].notna(),
+    "Code",
+]
+
+print("All Codes:", len(adjusted_df["Code"].unique()))
+print("Valid Codes:", len(valid_codes))
+
+# 対象銘柄の有効な株価系列を取得
+screening_df = (
+    adjusted_df[
+        adjusted_df["Code"].isin(valid_codes) & (adjusted_df["Date"] <= target_date)
+    ]
+    .dropna(subset=["AdjC"])
+    .sort_values(["Code", "Date"])
+)
 
 macd_screening_results = []
 
-for code in codes:
-    code_df = adjusted_df[adjusted_df["Code"] == code].set_index("Date")
-    print(code_df.head())
-    print(len(code_df))
+for code in valid_codes:
+    code_df = screening_df[screening_df["Code"] == code].set_index("Date")
 
     macd_result = macd(code_df["AdjC"], fast=12, slow=26, signal=9)
 
@@ -53,11 +60,8 @@ for code in codes:
         & (macd_df["MACD"].shift(1) <= macd_df["Signal"].shift(1))
     ).astype(int)
 
-    print(code)
-    print(macd_df.tail())
-
-    if macd_df["GoldenCross"][str(to_datetime.date())] == 1:
-        adj_vo = code_df["AdjVo"][str(to_datetime.date())]
+    if macd_df["GoldenCross"][target_date] == 1:
+        adj_vo = code_df["AdjVo"][target_date]
         macd_screening_results.append({"Code": code, "AdjVo": adj_vo})
 
 macd_screening_df = pd.DataFrame(macd_screening_results)
@@ -66,3 +70,4 @@ macd_screening_df = macd_screening_df.sort_values(
 )  # 出来高が多い順で見る
 
 print("MACD GoldenCross:", macd_screening_df.head())
+print("Total:", len(macd_screening_df))
