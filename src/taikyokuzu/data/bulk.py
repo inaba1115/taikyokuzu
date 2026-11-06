@@ -1,4 +1,4 @@
-"""J-Quants API V2 Bulk market data loading."""
+"""J-Quants API V2 の Bulk データを取得するモジュール。"""
 
 from __future__ import annotations
 
@@ -19,9 +19,30 @@ def _fetch_bulk_file(
     size: int,
     client: jquantsapi.ClientV2,
 ) -> pd.DataFrame:
-    """Download and parse one gzip CSV (metadata participates in cache key)."""
-    # last_modified and size are intentionally part of the joblib cache key,
-    # even though download_bulk needs only the key.
+    """Bulk ファイルをダウンロードし、gzip 圧縮された CSV を読み込む。
+
+    Parameters
+    ----------
+    key : str
+        ダウンロード対象の Bulk ファイルを識別するキー。
+    last_modified : str
+        ファイルの最終更新日時。キャッシュの識別に使用する。
+    size : int
+        ファイルサイズ。キャッシュの識別に使用する。
+    client : jquantsapi.ClientV2
+        J-Quants API V2 のクライアント。
+
+    Returns
+    -------
+    pandas.DataFrame
+        CSV から読み込んだ株価データ。``Date`` は日時型、``Code`` は文字列型。
+
+    Notes
+    -----
+    ``last_modified`` と ``size`` はダウンロード処理には使用しないが、
+    ``joblib.Memory`` のキャッシュキーに含めることでファイルの更新を検出する。
+    一時ファイルは読み込み後に削除する。
+    """
     with TemporaryDirectory() as tmp:
         path = Path(tmp) / "bars.csv.gz"
         client.download_bulk(key=key, output_path=str(path))
@@ -41,12 +62,39 @@ def load_bulk_data(
     client: jquantsapi.ClientV2,
     cache_dir: str | Path,
 ) -> pd.DataFrame:
-    """Return all TSE daily bars between start and end (inclusive).
+    """指定期間の東証上場銘柄の日足株価を Bulk データから取得する。
 
-    Uses ClientV2.get_bulk_list/download_bulk. File data is cached using
-    joblib.Memory; a change to LastModified or Size invalidates that entry.
-    Passing cache_dir=None disables caching. The listing itself is fetched
-    each call so that newly published/revised files are discovered.
+    Parameters
+    ----------
+    start : str or datetime.date
+        取得期間の開始日（当日を含む）。
+    end : str or datetime.date
+        取得期間の終了日（当日を含む）。
+    client : jquantsapi.ClientV2
+        J-Quants API V2 のクライアント。
+    cache_dir : str or pathlib.Path
+        ``joblib.Memory`` のキャッシュ保存先。
+        実行時に ``None`` を渡した場合、キャッシュは無効になる。
+
+    Returns
+    -------
+    pandas.DataFrame
+        指定期間内の日足データ。``Code`` と ``Date`` の組は一意で、
+        ``Code``、``Date`` の昇順に並ぶ。
+
+    Raises
+    ------
+    ValueError
+        日付の指定が不正な場合、利用可能なファイルがない場合、
+        必須列が不足する場合、または指定期間に該当するデータがない場合。
+
+    Notes
+    -----
+    ``get_bulk_list`` によるファイル一覧の取得は毎回実行する。
+    各ファイルの内容は ``joblib.Memory`` でキャッシュし、
+    ``LastModified`` または ``Size`` が変わると再取得する。
+    月次・日次ファイルのレコードが重複した場合は、
+    公開日時が新しいファイルのデータを優先する。
     """
     start_dt = pd.Timestamp(start).normalize()
     end_dt = pd.Timestamp(end).normalize()
@@ -66,7 +114,7 @@ def load_bulk_data(
     mem = Memory(cache_dir, verbose=0)
     cached_fetch = mem.cache(_fetch_bulk_file, ignore=["client"])
 
-    # In case monthly and daily files overlap, prefer the newest published file.
+    # 月次・日次ファイルが重複した場合、公開日時が新しいデータを優先する。
     listing = listing.sort_values("LastModified", na_position="first")
     frames: list[pd.DataFrame] = []
     for item in listing.itertuples(index=False):

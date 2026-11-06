@@ -1,6 +1,9 @@
-"""Calculate J-Quants adjusted daily bars from Bulk CSV columns.
+"""J-Quants の Bulk データから調整済み株価・出来高を計算するモジュール。
 
-Reference: https://jpx-jquants.com/ja/spec/eq-bars-daily/adj
+References
+----------
+J-Quants 公式仕様：「調整済み株価の計算方法」
+https://jpx-jquants.com/ja/spec/eq-bars-daily/adj
 """
 
 from __future__ import annotations
@@ -14,17 +17,46 @@ _PRICE_COLUMNS = ("O", "H", "L", "C")
 
 
 def _round_half_up(values: pd.Series) -> pd.Series:
-    """Round nonnegative prices/volumes to 1 decimal, at the final step only."""
-    # pandas.Series.round() uses ties-to-even, unlike J-Quants' 四捨五入.
+    """非負の数値を小数第 1 位に四捨五入する。
+
+    Parameters
+    ----------
+    values : pandas.Series
+        丸める前の価格または出来高。非負の値を想定する。
+
+    Returns
+    -------
+    pandas.Series
+        小数第 1 位に四捨五入した値。
+
+    Notes
+    -----
+    ``pandas.Series.round`` の偶数丸めではなく、J-Quants の
+    四捨五入に合わせた計算を行う。累積係数の計算途中では丸めない。
+    """
     return np.floor(values * 10 + 0.5) / 10
 
 
 def _cumulative_adjustment(factor: pd.Series, code: pd.Series) -> pd.Series:
-    """Multiply only factors at strictly *later* dates within each code.
+    """銘柄ごとに、対象日より新しい日付の調整係数を累積する。
 
-    Inputs must be ordered by Code ascending and Date descending.
-    For each code, the newest row's factor is 1; an ex-date's AdjFactor
-    first affects the *next older* row, not the ex-date itself.
+    Parameters
+    ----------
+    factor : pandas.Series
+        各行に対応する調整係数。
+    code : pandas.Series
+        各行の銘柄コード。
+
+    Returns
+    -------
+    pandas.Series
+        対象日より後の調整係数を掛け合わせた累積調整係数。
+
+    Notes
+    -----
+    入力行は ``Code`` の昇順、``Date`` の降順で並んでいることを前提とする。
+    権利落ち日の調整係数は当日の価格には適用せず、それより過去の日付に適用する。
+    このため、銘柄ごとに調整係数を 1 行ずらしてから累積積を計算する。
     """
     previous_factor = factor.groupby(code, sort=False).shift(1, fill_value=1.0)
     return previous_factor.groupby(code, sort=False).cumprod()
@@ -35,22 +67,43 @@ def adjust_prices(
     *,
     as_of: str | date | None = None,
 ) -> pd.DataFrame:
-    """Reproduce J-Quants AdjO/AdjH/AdjL/AdjC/AdjVo from Bulk data.
+    """Bulk データから J-Quants 方式の調整済み株価・出来高を計算する。
 
-    Follows the steps in the official specification:
-      1. Sort each Code by Date descending.
-      2. CumAdj = product of AdjFactor on strictly newer dates.
-      3. AdjO/H/L/C = round_half_up(raw price * CumAdj, 1 decimal).
-      4. AdjVo = round_half_up(Vo / CumAdjVo, 1 decimal), where
-         CumAdjVo excludes AdjFactor on ExRT == 3 (rights issues).
+    Parameters
+    ----------
+    raw_df : pandas.DataFrame
+        ``Code``、``Date``、``AdjFactor`` を含む日足データ。
+        ``O``、``H``、``L``、``C``、``Vo`` のうち少なくとも 1 列が必要。
+        ``Vo`` が存在する場合は ``ExRT`` も必要。
+    as_of : str or datetime.date or None, optional
+        調整計算の基準日。この日付より後のデータを除外する。
+        ``None`` の場合は入力データに含まれる全期間を使用する。
 
-    Intermediate columns CumAdj (and CumAdjVo, if Vo exists) are
-    retained for verification. Results are sorted by Code, Date ascending.
-    Input is not modified. Duplicate (Code, Date) rows are rejected.
+    Returns
+    -------
+    pandas.DataFrame
+        元データに累積調整係数 ``CumAdj`` と、存在する価格列に応じた
+        ``AdjO``、``AdjH``、``AdjL``、``AdjC`` を追加したデータ。
+        ``Vo`` が存在する場合は ``CumAdjVo`` と ``AdjVo`` も追加する。
+        ``Code``、``Date`` の昇順に並ぶ。入力データは変更しない。
 
-    ``as_of`` excludes later ex-dates; it does not by itself guarantee a
-    full point-in-time snapshot if the source data was revised later.
-    Accurate adjustment requires all relevant ex-dates through ``as_of``.
+    Raises
+    ------
+    ValueError
+        必須列が不足する場合、同じ銘柄・日付が重複する場合、
+        ``Code`` または ``Date`` が欠損する場合、
+        ``AdjFactor`` が正の有限値でない場合など。
+
+    Notes
+    -----
+    J-Quants の公式仕様に従い、銘柄ごとに日付降順へ並べ、
+    対象日より新しい日付の ``AdjFactor`` の積を ``CumAdj`` とする。
+    価格には ``CumAdj`` を掛け、出来高は ``CumAdjVo`` で割る。
+    出来高の計算ではライツイシュー（``ExRT == 3``）の係数を除外する。
+    最終結果のみを小数第 1 位に四捨五入する。
+
+    ``as_of`` を指定しても、取得後に訂正された過去データを元に戻すことはできない。
+    また、正確な調整には基準日までの該当する権利落ち日データが必要となる。
     """
     required = {"Code", "Date", "AdjFactor"}
     missing = required - set(raw_df.columns)
@@ -87,7 +140,7 @@ def adjust_prices(
     if df.duplicated(["Code", "Date"]).any():
         raise ValueError("Duplicate (Code, Date) records")
 
-    # Official step 2: make newer observations appear *before* older ones.
+    # 新しい日付から順に、過去へ向かって調整係数を累積できる並びにする。
     df = df.sort_values(["Code", "Date"], ascending=[True, False]).reset_index(
         drop=True
     )
@@ -96,21 +149,21 @@ def adjust_prices(
     if factor.isna().any() or (~np.isfinite(factor)).any() or (factor <= 0).any():
         raise ValueError("AdjFactor must be positive and finite for every row")
 
-    # Official step 3: an ex-date factor applies only to older prices.
+    # 権利落ち日の係数は、その日より古い株価のみに適用する。
     df["CumAdj"] = _cumulative_adjustment(factor, df["Code"])
 
-    # Official step 4: multiply first; round the FINAL result to 1 decimal.
+    # 価格には累積調整係数を掛け、最後に小数第 1 位へ丸める。
     for col in prices:
         value = pd.to_numeric(df[col], errors="raise")
         df[f"Adj{col}"] = _round_half_up(value * df["CumAdj"])
 
     if has_volume:
-        # Rights issues (ExRT == 3) affect prices, but *not* share volume.
+        # ライツイシューでは価格のみを調整し、出来高の係数からは除外する。
         rights_issue = pd.to_numeric(df["ExRT"], errors="coerce").eq(3).fillna(False)
         volume_factor = factor.where(~rights_issue, 1.0)
         df["CumAdjVo"] = _cumulative_adjustment(volume_factor, df["Code"])
         volume = pd.to_numeric(df["Vo"], errors="raise")
         df["AdjVo"] = _round_half_up(volume / df["CumAdjVo"])
 
-    # Return in chronological order for indicators such as EMA/MACD.
+    # EMA や MACD を計算しやすいよう、日付の昇順に戻す。
     return df.sort_values(["Code", "Date"]).reset_index(drop=True)
