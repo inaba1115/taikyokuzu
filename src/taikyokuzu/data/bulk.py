@@ -60,7 +60,8 @@ def load_bulk_data(
     end: str | date,
     *,
     client: jquantsapi.ClientV2,
-    cache_dir: str | Path,
+    cache_dir: str | Path | None,
+    cache_verbose: int = 0,
 ) -> pd.DataFrame:
     """指定期間の東証上場銘柄の日足株価を Bulk データから取得する。
 
@@ -103,15 +104,15 @@ def load_bulk_data(
 
     listing = client.get_bulk_list(
         endpoint=_ENDPOINT,
-        from_date=str(start_dt),
-        to_date=str(end_dt),
+        from_date=str(start_dt.date()),
+        to_date=str(end_dt.date()),
     )
     if listing.empty:
         raise ValueError(
             f"No available Bulk files for {start_dt.date()}..{end_dt.date()}"
         )
 
-    mem = Memory(cache_dir, verbose=0)
+    mem = Memory(cache_dir, verbose=cache_verbose)
     cached_fetch = mem.cache(_fetch_bulk_file, ignore=["client"])
 
     # 月次・日次ファイルが重複した場合、公開日時が新しいデータを優先する。
