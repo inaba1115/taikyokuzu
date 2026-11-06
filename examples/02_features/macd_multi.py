@@ -28,9 +28,8 @@ macd_signal = 9
 eq_master_df = client.get_eq_master(date=to_datetime.date())
 eq_master_df = eq_master_df[
     eq_master_df["Code"].isin(["94330", "72590", "51010", "92780", "94380"])
-]
+]  # 銘柄の数が限られているならこういった書き方で良い。全銘柄だと時間かかるので別のやり方が必要
 print(eq_master_df)
-
 
 # 株価データ取得
 eq_bars_dict = {}
