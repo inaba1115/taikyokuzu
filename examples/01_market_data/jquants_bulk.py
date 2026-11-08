@@ -42,7 +42,6 @@ print(
     bars.index.get_level_values("Date").max(),
 )
 
-
 # TODO: plot_candlestickが"Date", "Code"がカラムである前提の実装になっているため、
 # 一旦、MultiIndexをreset_indexでカラムに戻してから使うこととする
 bars = bars.reset_index()
