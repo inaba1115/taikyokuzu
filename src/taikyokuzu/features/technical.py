@@ -4,8 +4,6 @@ from dataclasses import dataclass
 
 import pandas as pd
 
-TechnicalData = pd.Series | pd.DataFrame
-
 
 @dataclass(frozen=True)
 class MACDResult:
