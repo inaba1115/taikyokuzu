@@ -85,3 +85,36 @@ def _validate_positive_int(value: int, *, name: str) -> None:
 
     if value <= 0:
         raise ValueError(f"{name} must be positive")
+
+
+def macd2(
+    close: pd.Series,
+    fast: int = 12,
+    slow: int = 26,
+    signal: int = 9,
+) -> pd.DataFrame:
+    close = close.sort_index()
+
+    def ema2(values: pd.Series, span: int) -> pd.Series:
+        return values.groupby(level="Code").transform(
+            lambda x: x.ewm(
+                span=span,
+                adjust=False,
+                min_periods=span,
+            ).mean()
+        )
+
+    fast_ema = ema2(close, fast)
+    slow_ema = ema2(close, slow)
+
+    macd_line = fast_ema - slow_ema
+    signal_line = ema2(macd_line, signal)
+    histogram = macd_line - signal_line
+
+    return pd.DataFrame(
+        {
+            "MACD": macd_line,
+            "MACDSignal": signal_line,
+            "MACDHistogram": histogram,
+        }
+    )
