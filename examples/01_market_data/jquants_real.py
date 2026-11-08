@@ -20,11 +20,24 @@ bars = client.get_eq_bars_daily(
     to_yyyymmdd=to_yyyymmdd,
 )
 
+bars = bars.set_index(["Date", "Code"]).sort_index()
+assert bars.index.is_unique
+
 print("J-Quants real daily bars:")
 print(bars.head())
 print()
 print("Rows:", len(bars))
-print("period:", bars["Date"].min(), "to", bars["Date"].max())
+print(
+    "period:",
+    bars.index.get_level_values("Date").min(),
+    "to",
+    bars.index.get_level_values("Date").max(),
+)
+
+
+# TODO: plot_candlestickが"Date", "Code"がカラムである前提の実装になっているため、
+# 一旦、MultiIndexをreset_indexでカラムに戻してから使うこととする
+bars = bars.reset_index()
 
 plot_candlestick(
     bars,
