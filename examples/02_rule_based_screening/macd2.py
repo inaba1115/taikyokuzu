@@ -45,13 +45,10 @@ adjusted_df = adjusted_df.set_index(["Date", "Code"]).sort_index()
 assert adjusted_df.index.is_unique
 
 # 基準日に終値が存在する銘柄 & eq_master_dfに存在
-valid_codes = adjusted_df.loc[
-    (adjusted_df.index.get_level_values("Date") == target_date)
-    & adjusted_df["AdjC"].notna()
-    & adjusted_df.index.get_level_values("Code").isin(
-        eq_master_df.index.get_level_values("Code")
-    )
-].index.get_level_values("Code")
+latest_df = adjusted_df.xs(target_date, level="Date")
+valid_codes = latest_df.index[
+    latest_df["AdjC"].notna() & latest_df.index.isin(eq_master_df.index)
+]
 
 print("All Codes:", len(adjusted_df.index.get_level_values("Code").unique()))
 print("Valid Codes:", len(valid_codes))
@@ -64,27 +61,26 @@ screening_df = (
 )
 
 
-def calc_macd_features(code_df: pd.DataFrame) -> None | pd.DataFrame:
-    # データ不足の銘柄を除外
-    if len(code_df) < 100:
-        return None
-
+def calc_macd_features(code_df: pd.DataFrame) -> pd.DataFrame:
     macd_df = macd(code_df["AdjC"])
 
     macd_line = macd_df["MACD"]
     signal_line = macd_df["MACDSignal"]
 
-    golden_cross = (macd_line > signal_line) & (
-        macd_line.shift(1) <= signal_line.shift(1)
+    golden_cross = (
+        (macd_line > signal_line) & (macd_line.shift(1) <= signal_line.shift(1))
     ).astype(int)
     golden_cross.name = "MACDGoldenCross"
 
-    return pd.concat([macd_df, golden_cross], axis=1)
+    return macd_df.join(golden_cross)
 
+
+# データ不足の銘柄を除外
+screening_df = screening_df.groupby(level="Code").filter(lambda x: len(x) >= 100)
 
 macd_features = (
     screening_df.groupby(level="Code", group_keys=False)
-    .apply(calc_macd_features)  # type: ignore
+    .apply(calc_macd_features)
     .sort_index()
 )
 
