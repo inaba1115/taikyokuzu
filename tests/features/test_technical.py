@@ -16,13 +16,11 @@ def test_ema_matches_pandas_adjust_false():
 def test_macd_returns_consistent_components():
     values = pd.Series([100.0, 101.0, 103.0, 102.0, 105.0])
     result = macd(values, fast=2, slow=3, signal=2)
-    expected_histogram = result.macd - result.signal
-    expected_histogram.name = "Histogram"
+    expected_histogram = result["MACD"] - result["MACDSignal"]
+    expected_histogram.name = "MACDHistogram"
 
-    pd.testing.assert_series_equal(result.histogram, expected_histogram)
-    assert result.macd.name == "MACD"
-    assert result.signal.name == "Signal"
-    assert result.histogram.name == "Histogram"
+    pd.testing.assert_series_equal(result["MACDHistogram"], expected_histogram)
+    assert result.columns.to_list() == ["MACD", "MACDSignal", "MACDHistogram"]
 
 
 def test_macd_requires_fast_smaller_than_slow():

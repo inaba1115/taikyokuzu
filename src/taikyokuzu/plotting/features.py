@@ -4,8 +4,6 @@ import numpy as np
 import pandas as pd
 from matplotlib.axes import Axes
 
-from taikyokuzu.features import MACDResult
-
 
 def draw_indicator(
     values: pd.Series,
@@ -71,7 +69,7 @@ def draw_moving_averate(
 
 
 def draw_macd(
-    result: MACDResult,
+    result: pd.DataFrame,
     *,
     ax: Axes,
     histogram_width: float = 0.8,
@@ -94,9 +92,9 @@ def draw_macd(
     histogram_alpha:
         Histogramの透明度。
     """
-    macd_values = _to_float_array(result.macd)
-    signal_values = _to_float_array(result.signal)
-    histogram_values = _to_float_array(result.histogram)
+    macd_values = _to_float_array(result["MACD"])
+    signal_values = _to_float_array(result["MACDSignal"])
+    histogram_values = _to_float_array(result["MACDHistogram"])
 
     lengths = {
         len(macd_values),

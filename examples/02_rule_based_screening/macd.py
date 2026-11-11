@@ -72,8 +72,8 @@ for code, code_df in screening_df.groupby("Code", sort=False):
 
     macd_df = pd.DataFrame(
         {
-            "MACD": macd_result.macd,
-            "Signal": macd_result.signal,
+            "MACD": macd_result["MACD"],
+            "Signal": macd_result["MACDSignal"],
         },
         index=code_df.index,
     )
