@@ -1,7 +1,17 @@
 import pandas as pd
 import pytest
 
-from taikyokuzu.features import ema, macd, rsi
+from taikyokuzu.features import ema, macd, rsi, sma
+
+
+def test_sma_uses_full_window():
+    values = pd.Series([1.0, 2.0, 3.0])
+    result = sma(values, window=2)
+
+    assert pd.isna(result.iloc[0])
+    assert result.iloc[1] == pytest.approx(1.5)
+    assert result.iloc[2] == pytest.approx(2.5)
+    assert result.name == "SMA2"
 
 
 def test_ema_matches_pandas_adjust_false():
