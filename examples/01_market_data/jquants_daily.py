@@ -1,5 +1,6 @@
 import jquantsapi
 import matplotlib.pyplot as plt
+import pandas as pd
 from joblib import Memory
 
 from taikyokuzu.plotting import plot_candlestick
@@ -11,13 +12,13 @@ mem = Memory(cachedir, verbose=2)
 client.get_eq_bars_daily = mem.cache(client.get_eq_bars_daily)
 
 code = "72030"  # Toyota
-from_yyyymmdd = "2025-01-01"
-to_yyyymmdd = "2025-03-31"
+from_date = pd.Timestamp("2025-01-01")
+to_date = pd.Timestamp("2025-03-31")
 
 bars = client.get_eq_bars_daily(
     code=code,
-    from_yyyymmdd=from_yyyymmdd,
-    to_yyyymmdd=to_yyyymmdd,
+    from_yyyymmdd=from_date.date(),
+    to_yyyymmdd=to_date.date(),
 )
 
 bars = bars.set_index(["Date", "Code"]).sort_index()

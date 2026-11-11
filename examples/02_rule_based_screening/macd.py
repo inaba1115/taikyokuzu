@@ -19,15 +19,16 @@ target_date = pd.Timestamp("2026-11-06")
 from_date = target_date - pd.Timedelta(days=300)  # 200営業日ほど欲しいため長めにとる
 
 # 上場銘柄一覧
-eq_master = client.get_eq_master(date=target_date.date())
+eq_master_df = client.get_eq_master(date=target_date.date())
+eq_master_df = eq_master_df.set_index("Code")
+assert eq_master_df.index.is_unique
+eq_master_df = eq_master_df[["CoName", "ProdCat"]]
 
 # 国内普通株式のみ(内国株券 & 5桁の証券コードの末尾が0なら普通株式)
-eq_master = eq_master.loc[
-    (eq_master["ProdCat"] == "011") & (eq_master["Code"].str.endswith("0"))
+eq_master_df = eq_master_df.loc[
+    (eq_master_df["ProdCat"] == "011")
+    & (eq_master_df.index.get_level_values("Code").str.endswith("0"))
 ]
-
-# 銘柄名の辞書を作成
-code_to_name = eq_master.set_index("Code")["CoName"].to_dict()
 
 # 日足データ取得(bulk)
 raw_df = load_bulk_data(
@@ -39,88 +40,61 @@ raw_df = load_bulk_data(
 )
 adjusted_df = adjust_prices(raw_df)
 
-# 基準日に終値が存在する銘柄 & eq_masterに存在
-valid_codes = adjusted_df.loc[
-    (adjusted_df["Date"] == target_date)
-    & adjusted_df["AdjC"].notna()
-    & adjusted_df["Code"].isin(eq_master["Code"]),
-    "Code",
+# MultiIndexを設定
+adjusted_df = adjusted_df.set_index(["Date", "Code"]).sort_index()
+assert adjusted_df.index.is_unique
+
+# 基準日に終値が存在する銘柄 & eq_master_dfに存在
+latest_df = adjusted_df.xs(target_date, level="Date")
+valid_codes = latest_df.index[
+    latest_df["AdjC"].notna() & latest_df.index.isin(eq_master_df.index)
 ]
 
-print("All Codes:", len(adjusted_df["Code"].unique()))
+print("All Codes:", len(adjusted_df.index.get_level_values("Code").unique()))
 print("Valid Codes:", len(valid_codes))
 
 # 対象銘柄の有効な株価系列を取得
 screening_df = (
-    adjusted_df[
-        adjusted_df["Code"].isin(valid_codes) & (adjusted_df["Date"] <= target_date)
-    ]
+    adjusted_df.loc[adjusted_df.index.get_level_values("Code").isin(valid_codes)]
     .dropna(subset=["AdjC"])
-    .sort_values(["Code", "Date"])
+    .sort_index()
 )
 
-macd_screening_results = []
 
-for code, code_df in screening_df.groupby("Code", sort=False):
-    # データ不足の銘柄を除外
-    if len(code_df) < 100:
-        continue
+def calc_macd_features(code_df: pd.DataFrame) -> pd.DataFrame:
+    macd_df = macd(code_df["AdjC"])
 
-    code_df = code_df.set_index("Date")
+    macd_line = macd_df["MACD"]
+    signal_line = macd_df["MACDSignal"]
 
-    macd_result = macd(code_df["AdjC"], fast=12, slow=26, signal=9)
+    golden_cross = (
+        (macd_line > signal_line) & (macd_line.shift(1) <= signal_line.shift(1))
+    ).astype(int)
+    golden_cross.name = "MACDGoldenCross"
 
-    macd_df = pd.DataFrame(
-        {
-            "MACD": macd_result.macd,
-            "Signal": macd_result.signal,
-        },
-        index=code_df.index,
-    )
+    return macd_df.join(golden_cross)
 
-    # 最終2営業日を比較
-    prev = macd_df.iloc[-2]
-    curr = macd_df.iloc[-1]
 
-    golden_cross = (prev["MACD"] <= prev["Signal"]) and (curr["MACD"] > curr["Signal"])
+# データ不足の銘柄を除外
+screening_df = screening_df.groupby(level="Code").filter(lambda x: len(x) >= 100)
 
-    # NOTE: ゴールデンクロスが発生した日付と、エントリー用の日付は別で扱うのがおすすめ
-    # entry_signal = golden_cross.shift(1).fillna(False) といったイメージ
-
-    if not golden_cross:
-        continue
-
-    # 銘柄名が取得できなければ銘柄コードで代用
-    co_name = code_to_name.get(code, code)
-
-    macd_screening_results.append(
-        {
-            "Code": code,
-            "CoName": co_name,
-            "AdjC": code_df["AdjC"].iloc[-1],
-            "MACD": curr["MACD"],
-            "Signal": curr["Signal"],
-            "AdjVo": code_df["AdjVo"].iloc[-1],
-            "Va": code_df["Va"].iloc[-1],
-        }
-    )
-
-# 0件の場合にも対応
-macd_screening_df = pd.DataFrame(
-    macd_screening_results,
-    columns=[
-        "Code",
-        "CoName",
-        "AdjC",
-        "MACD",
-        "Signal",
-        "AdjVo",
-        "Va",
-    ],
+macd_features = (
+    screening_df.groupby(level="Code", group_keys=False)
+    .apply(calc_macd_features)
+    .sort_index()
 )
 
-macd_screening_df = macd_screening_df.sort_values(by="Va", ascending=False)
+X = screening_df.join(macd_features)
+
+result_df = X.loc[
+    (X.index.get_level_values("Date") == target_date) & X["MACDGoldenCross"] == 1
+]
+
+result_df = result_df.join(eq_master_df, on="Code")
+result_df = result_df.reset_index()
+result_df = result_df[["Code", "CoName", "AdjC", "MACD", "MACDSignal", "AdjVo", "Va"]]
+result_df = result_df.sort_values(by="Va", ascending=False)
 
 print("MACD GoldenCross:")
-print(macd_screening_df.head(30))
-print("Total:", len(macd_screening_df))
+print(result_df.head(30))
+print("Total:", len(result_df))

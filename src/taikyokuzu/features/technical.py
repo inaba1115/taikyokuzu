@@ -1,17 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
-
 import pandas as pd
-
-
-@dataclass(frozen=True)
-class MACDResult:
-    """Moving Average Convergence Divergenceの計算結果。"""
-
-    macd: pd.Series
-    signal: pd.Series
-    histogram: pd.Series
 
 
 def ema(values: pd.Series, span: int) -> pd.Series:
@@ -31,7 +20,7 @@ def macd(
     fast: int = 12,
     slow: int = 26,
     signal: int = 9,
-) -> MACDResult:
+) -> pd.DataFrame:
     """
     Moving Average Convergence Divergence (MACD) を計算する。
 
@@ -53,14 +42,12 @@ def macd(
     signal_line = ema(macd_line, span=signal)
     histogram = macd_line - signal_line
 
-    macd_line.name = "MACD"
-    signal_line.name = "Signal"
-    histogram.name = "Histogram"
-
-    return MACDResult(
-        macd=macd_line,
-        signal=signal_line,
-        histogram=histogram,
+    return pd.DataFrame(
+        {
+            "MACD": macd_line,
+            "MACDSignal": signal_line,
+            "MACDHistogram": histogram,
+        }
     )
 
 
@@ -83,36 +70,3 @@ def _validate_positive_int(value: int, *, name: str) -> None:
 
     if value <= 0:
         raise ValueError(f"{name} must be positive")
-
-
-def macd2(
-    close: pd.Series,
-    fast: int = 12,
-    slow: int = 26,
-    signal: int = 9,
-) -> pd.DataFrame:
-    close = close.sort_index()
-
-    def ema2(values: pd.Series, span: int) -> pd.Series:
-        return values.groupby(level="Code").transform(
-            lambda x: x.ewm(
-                span=span,
-                adjust=False,
-                min_periods=span,
-            ).mean()
-        )
-
-    fast_ema = ema2(close, fast)
-    slow_ema = ema2(close, slow)
-
-    macd_line = fast_ema - slow_ema
-    signal_line = ema2(macd_line, signal)
-    histogram = macd_line - signal_line
-
-    return pd.DataFrame(
-        {
-            "MACD": macd_line,
-            "MACDSignal": signal_line,
-            "MACDHistogram": histogram,
-        }
-    )
