@@ -89,9 +89,11 @@ macd_features = (
 )
 
 X = screening_df.join(macd_features)
+
 result_df = X.loc[
     (X.index.get_level_values("Date") == target_date) & X["MACDGoldenCross"] == 1
 ]
+
 result_df = result_df.join(eq_master_df, on="Code")
 result_df = result_df.reset_index()
 result_df = result_df[["Code", "CoName", "AdjC", "MACD", "MACDSignal", "AdjVo", "Va"]]
