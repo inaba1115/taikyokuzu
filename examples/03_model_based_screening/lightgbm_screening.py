@@ -98,6 +98,10 @@ X = X.join(macd_features)
 X = X.join(rsi_features)
 X = X.join(volatility_features)
 
+# 正規化MACD
+macd_features["MACDNorm"] = macd_features["MACD"] / bars_df["AdjC"]
+macd_features["MACDSignalNorm"] = macd_features["MACDSignal"] / bars_df["AdjC"]
+
 # Returns, Volume
 returns = bars_df["AdjC"].groupby(level="Code")
 for periods in [1, 2, 3, 5, 10, 20, 60]:
@@ -127,7 +131,7 @@ X[numeric_cols] = X[numeric_cols].replace([np.inf, -np.inf], np.nan)
 
 dates = X.index.get_level_values("Date")
 
-train_mask = (dates < target_date) & y.notna()
+train_mask = (dates < target_date) & np.isfinite(y)
 pred_mask = (dates == target_date) & bars_df.loc[
     X.index, "AdjC"
 ].notna()  # target_dateに終値が存在する銘柄だけを予測する
@@ -136,8 +140,22 @@ X_train = X.loc[train_mask]
 y_train = y.loc[train_mask]
 X_pred = X.loc[pred_mask]
 
+print("Training observations:", len(X_train))
+print("Prediction observations:", len(X_pred))
+print("Features:", len(X_train.columns))
+print(
+    "Missing feature ratio:",
+    X_train.isna().mean().sort_values(ascending=False).head(20),
+)
+
 model = fit_lightgbm(X_train, y_train)
 alpha = predict_lightgbm(model, X_pred)
+
+importance = pd.Series(
+    model.feature_importance(importance_type="gain"),
+    index=model.feature_name(),
+    name="Gain",
+).sort_values(ascending=False)
 
 # --- Screening ---
 
