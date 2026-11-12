@@ -9,11 +9,13 @@
 - evaluation: 予測精度、Alphaの評価
 
 ## 今後
-- backtest: バックテストエンジン
-- trading: 実市場への接続、発注、ポジション管理
-
-- portfolio: ポートフォリオ理論
-- factors: ファクターモデル
-
-- pricing: プライシング理論
-- risk: リスク管理
+- 直近
+  - model_selection: クロスバリデーション
+  - backtest: バックテストエンジン
+- 理論
+  - portfolio: ポートフォリオ理論
+  - factors: ファクターモデル
+  - pricing: プライシング理論
+  - risk: リスク管理
+- システム化
+  - trading: 実市場への接続、発注、ポジション管理
