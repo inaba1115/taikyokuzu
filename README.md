@@ -1,41 +1,19 @@
-# 開発メモ
+# design
+- data: jquantsや金利データなどを取得する
 
-## data
-- jquantsからapiでデータ取るか、bulkで取るか
-  - adjがapiしかないので、一旦apiで良いとする
-- synthetic -> 後回し
-- plot_candlestickは欲しい
+- plotting: 各種可視化
 
-- 金利とかコモディティとかのデータと合わせたい
+- features: 特徴量(MACD, RSIなど)
+- targets: 正解ラベル
+- alpha: Alpha予測モデル
+- evaluation: 予測精度、Alphaの評価
 
-## features
-- とりあえずmacdとそのplot
+## 今後
+- backtest: バックテストエンジン
+- trading: 実市場への接続、発注、ポジション管理
 
-## factors
-- 特徴量として後でやる
+- portfolio: ポートフォリオ理論
+- factors: ファクターモデル
 
-## calibration
-- 一旦無視
-
-## portfolio, backtest
-- 後回しで良い
-
-## alpha
-- lightgbm_screeningだけやれば良い
-
-# やること
-- 1銘柄でmacdを出すようにする -> now
-  - APIでok
-  - plotもやる
-
-- 全銘柄でmacdのゴールデンクロスを抽出できるようにする
-  - macdでのスクリーニング
-
-- lightgbm_screeningできるようにする
-
-- データ、feature増やす -> ここに時間かけるでok
-  - 金利、コモディティ, ...
-  - RSI、CAPM, ブルベア, ...
-  - dfデータの作り方を工夫する必要あると思われる
-
-- portfolio, backtest
+- pricing: プライシング理論
+- risk: リスク管理
