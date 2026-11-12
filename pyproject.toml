@@ -35,3 +35,4 @@ dev = [
 
 [tool.ruff.lint]
 unfixable = ["F401"]
+ignore = ["F401"]
