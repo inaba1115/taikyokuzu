@@ -84,11 +84,7 @@ macd_features = (
 )
 
 rsi_features = (
-    bars_df["AdjC"]
-    .groupby(level="Code", group_keys=False)
-    .apply(rsi)
-    .rename("RSI14")
-    .sort_index()
+    bars_df["AdjC"].groupby(level="Code", group_keys=False).apply(rsi).rename("RSI14")
 )
 
 volatility_features = (
@@ -96,7 +92,6 @@ volatility_features = (
     .groupby(level="Code", group_keys=False)
     .apply(rolling_volatility)
     .rename("Volatility20")
-    .sort_index()
 )
 
 X = X.join(macd_features)
@@ -133,7 +128,7 @@ X[numeric_cols] = X[numeric_cols].replace([np.inf, -np.inf], np.nan)
 dates = X.index.get_level_values("Date")
 
 train_mask = (dates < target_date) & y.notna()
-pred_mask = (dates == target_date) & bars_df.loc["AdjC"].notna()
+pred_mask = (dates == target_date) & bars_df.loc[X.index, "AdjC"].notna()
 
 X_train = X.loc[train_mask]
 y_train = y.loc[train_mask]
