@@ -50,7 +50,7 @@ if bars_df.index.get_level_values(level="Date").max() != target_date:
 X = pd.DataFrame(index=bars_df.index)
 
 # --- 33業種コード ---
-X = X.join(eq_master_df["S33"].rename("Sector33"), on="Code")
+X = X.join(eq_master_df["S33"].astype("category").rename("Sector33"), on="Code")
 
 # --- 日経平均(13210)、TOPIX(13060) ---
 X = X.join(
@@ -100,7 +100,9 @@ for periods in [1, 2, 3, 5, 10, 20, 60]:
     )
 
 for lag in range(1, 6):
-    returns_features[f"Return_Lag{lag}"] = returns_features["Return_1D"].shift(lag)
+    returns_features[f"Return_Lag{lag}"] = (
+        returns_features["Return_1D"].groupby(level="Code").shift(lag)
+    )
 
 X = X.join(returns_features)
 
@@ -126,22 +128,27 @@ y = (
     .sort_index()
 )
 
+# --- 対象銘柄の選別 ---
+valid_codes = X.index.get_level_values("Code").isin(eq_master_df.index)
+
+X = X.loc[valid_codes]
+y = y.loc[valid_codes]
+
 assert X.index.equals(y.index)
 
-# --- Fit/Predict
-train_mask = (slice(from_date, target_date - pd.Timedelta(1)), slice(None))
+# --- Fit/Predict ---
+dates = X.index.get_level_values("Date")
+
+train_mask = (dates < target_date) & y.notna()
+pred_mask = dates == target_date
 
 X_train = X.loc[train_mask]
 y_train = y.loc[train_mask]
-
-train_valid = y_train.notna()
-
-X_valid = X_train.loc[train_valid]
-y_valid = y_train.loc[train_valid]
-
-X_pred = X.xs(target_date, level="Date")
+X_pred = X.loc[pred_mask]
 
 model = fit_lightgbm(X_train, y_train)
 alpha = predict_lightgbm(model, X_pred)
 
-print(alpha.head())
+# --- Screening ---
+result_df = alpha.sort_values(ascending=False).head(30)
+print(result_df)
