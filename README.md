@@ -9,6 +9,8 @@
 - evaluation: 予測精度、Alphaの評価
 
 ## 今後
+- model_selection: クロスバリデーション
+
 - backtest: バックテストエンジン
 - trading: 実市場への接続、発注、ポジション管理
 
