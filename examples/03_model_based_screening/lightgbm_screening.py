@@ -128,7 +128,9 @@ X[numeric_cols] = X[numeric_cols].replace([np.inf, -np.inf], np.nan)
 dates = X.index.get_level_values("Date")
 
 train_mask = (dates < target_date) & y.notna()
-pred_mask = (dates == target_date) & bars_df.loc[X.index, "AdjC"].notna()
+pred_mask = (dates == target_date) & bars_df.loc[
+    X.index, "AdjC"
+].notna()  # target_dateに終値が存在する銘柄だけを予測する
 
 X_train = X.loc[train_mask]
 y_train = y.loc[train_mask]
