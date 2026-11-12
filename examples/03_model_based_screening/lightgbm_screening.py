@@ -122,7 +122,7 @@ y = (
     .apply(lambda x: forward_returns(x, periods=1))
 )
 
-assert y.index.equals(X.index)
+assert X.index.equals(y.index)
 
 # --- Fit/Predict ---
 
@@ -133,9 +133,7 @@ X[numeric_cols] = X[numeric_cols].replace([np.inf, -np.inf], np.nan)
 dates = X.index.get_level_values("Date")
 
 train_mask = (dates < target_date) & y.notna()
-pred_mask = (dates == target_date) & bars_df.loc[
-    X.index, "AdjC"
-].notna()  # indexじゃなくて:とか書けない?
+pred_mask = (dates == target_date) & bars_df.loc["AdjC"].notna()
 
 X_train = X.loc[train_mask]
 y_train = y.loc[train_mask]
