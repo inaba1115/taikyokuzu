@@ -14,7 +14,8 @@ pd.set_option("display.max_columns", None)
 
 client = jquantsapi.ClientV2()
 cache_dir = "./_joblib_cache"
-mem = Memory(cache_dir, verbose=2)
+cache_verbose = 0
+mem = Memory(cache_dir, verbose=cache_verbose)
 client.get_eq_master = mem.cache(client.get_eq_master, ignore=["self"])
 
 from_date = pd.Timestamp("2025-01-01")
@@ -28,7 +29,7 @@ bars_df = load_bulk_data(
     end=target_date,
     client=client,
     cache_dir=cache_dir,
-    cache_verbose=2,
+    cache_verbose=cache_verbose,
 )
 bars_df = adjust_prices(bars_df)
 bars_df = bars_df.set_index(["Date", "Code"]).sort_index()
@@ -148,10 +149,9 @@ X_pred = X.loc[pred_mask]
 print("Training observations:", len(X_train))
 print("Prediction observations:", len(X_pred))
 print("Features:", len(X_train.columns))
-print(
-    "Missing feature ratio:",
-    X_train.isna().mean().sort_values(ascending=False).head(20),
-)
+print("Missing feature ratio:")
+print(X_train.isna().mean().sort_values(ascending=False).head(20))
+print()
 
 model = fit_lightgbm(X_train, y_train)
 alpha = predict_lightgbm(model, X_pred)
@@ -162,7 +162,12 @@ importance = pd.Series(
     name="Gain",
 ).sort_values(ascending=False)
 
+print("Feature Importance:")
+print(importance)
+print()
+
 # --- Screening ---
 
 result_df = alpha.sort_values(ascending=False).head(30)
+print("Alpha:")
 print(result_df)
