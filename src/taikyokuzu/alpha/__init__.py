@@ -1,7 +1,9 @@
-from taikyokuzu.alpha.targets import (
-    forward_returns,
+from taikyokuzu.alpha.lightgbm import (
+    fit_lightgbm,
+    predict_lightgbm,
 )
 
 __all__ = [
-    "forward_returns",
+    "fit_lightgbm",
+    "predict_lightgbm",
 ]
