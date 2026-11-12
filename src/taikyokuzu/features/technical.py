@@ -4,10 +4,7 @@ import numpy as np
 import pandas as pd
 
 
-def sma(
-    values: pd.Series,
-    window: int,
-) -> pd.Series:
+def sma(values: pd.Series, window: int) -> pd.Series:
     """Simple Moving Average (SMA) を計算する。"""
     _validate_series(values)
     _validate_positive_int(window, name="window")
