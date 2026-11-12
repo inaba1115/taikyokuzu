@@ -74,6 +74,11 @@ X = X.join(eq_master_df["S33"].astype("category").rename("Sector33"), on="Code")
 X = X.join(nikkei_return, on="Date")
 X = X.join(topix_return, on="Date")
 
+# Calendar
+X["Weekday"] = pd.Categorical(
+    pd.DatetimeIndex(X.index.get_level_values("Date")).day_of_week
+)
+
 # Technical
 macd_features = (
     bars_df["AdjC"]
