@@ -3,7 +3,7 @@ from __future__ import annotations
 import pandas as pd
 import pytest
 
-from taikyokuzu.alpha import forward_returns
+from taikyokuzu.targets import forward_returns
 
 
 def test_forward_returns():
