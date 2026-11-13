@@ -20,12 +20,12 @@ pd.set_option("display.max_columns", None)
 
 client = jquantsapi.ClientV2()
 cache_dir = "./_joblib_cache"
-cache_verbose = 0
+cache_verbose = 2
 mem = Memory(cache_dir, verbose=cache_verbose)
 client.get_eq_master = mem.cache(client.get_eq_master, ignore=["self"])
 
-from_date = pd.Timestamp("2025-01-01")
-target_date = pd.Timestamp("2026-10-30")
+from_date = pd.Timestamp("2021-11-12")
+target_date = pd.Timestamp("2026-11-12")
 
 # --- Data ---
 
