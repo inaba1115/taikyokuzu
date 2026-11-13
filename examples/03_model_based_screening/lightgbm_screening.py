@@ -12,7 +12,11 @@ from taikyokuzu.features import (
     rolling_volatility,
     rsi,
 )
-from taikyokuzu.targets import stable_forward_returns
+from taikyokuzu.targets import (
+    forward_returns,
+    min_forward_returns,
+    stable_forward_returns,
+)
 
 pd.set_option("display.unicode.east_asian_width", True)
 pd.set_option("display.max_colwidth", None)
@@ -140,8 +144,9 @@ for lag in range(1, 6):
 
 # --- Target ---
 
-# y = code_prices.apply(forward_returns, periods=1)
-y = code_prices.apply(stable_forward_returns, periods=3, penalty=0.5)
+y = code_prices.apply(forward_returns, periods=1)
+# y = code_prices.apply(min_forward_returns, periods=3)
+# y = code_prices.apply(stable_forward_returns, periods=3, penalty=0.5)
 
 assert X.index.equals(y.index)
 
