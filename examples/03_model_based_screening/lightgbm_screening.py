@@ -75,6 +75,10 @@ bars_df = bars_df.loc[valid_codes]
 
 # --- Features ---
 
+code_prices = bars_df["AdjC"].groupby(level="Code", group_keys=False)
+code_va = bars_df["Va"].groupby(level="Code", group_keys=False)
+code_vo = bars_df["AdjVo"].groupby(level="Code", group_keys=False)
+
 X = pd.DataFrame(index=bars_df.index)
 
 X = X.join(eq_master_df["S33"].astype("category").rename("Sector33"), on="Code")
@@ -88,9 +92,7 @@ X["Weekday"] = pd.Categorical(
 
 # Technical
 macd_features = (
-    bars_df["AdjC"]
-    .groupby(level="Code")
-    .filter(lambda x: len(x) >= 100)  # データ不足の銘柄を除外
+    code_prices.filter(lambda x: len(x) >= 100)  # データ不足の銘柄を除外
     .groupby(level="Code", group_keys=False)
     .apply(macd)
 )
@@ -108,55 +110,37 @@ X = X.join(rsi_features)
 
 # Volatility
 for window in [5, 10, 20, 60]:
-    X[f"Volatility{window}D"] = (
-        bars_df["AdjC"]
-        .groupby(level="Code", group_keys=False)
-        .apply(rolling_volatility, window=window)
-    )
+    X[f"Volatility{window}D"] = code_prices.apply(rolling_volatility, window=window)
 
 # Drawdown
-X["Drawdown"] = bars_df["AdjC"].groupby(level="Code", group_keys=False).apply(drawdown)
+X["Drawdown"] = code_prices.apply(drawdown)
 
 for window in [5, 10, 20, 60]:
-    X[f"Drawdown{window}D"] = (
-        bars_df["AdjC"]
-        .groupby(level="Code", group_keys=False)
-        .apply(rolling_drawdown, window=window)
-    )
+    X[f"Drawdown{window}D"] = code_prices.apply(rolling_drawdown, window=window)
 
 # Returns
 for periods in [1, 2, 3, 5, 10, 20, 60]:
-    X[f"Return{periods}D"] = (
-        bars_df["AdjC"].groupby(level="Code").pct_change(periods=periods)
-    )
+    X[f"Return{periods}D"] = code_prices.pct_change(periods=periods)
 
 for lag in range(1, 6):
     X[f"ReturnLag{lag}"] = X["Return1D"].groupby(level="Code").shift(lag)
 
 # Volume
 for periods in [1, 2, 3, 5, 10, 20, 60]:
-    X[f"VaChange{periods}D"] = (
-        bars_df["Va"].groupby(level="Code").pct_change(periods=periods)
-    )
+    X[f"VaChange{periods}D"] = code_va.pct_change(periods=periods)
 
 for lag in range(1, 6):
     X[f"VaChangeLag{lag}"] = X["VaChange1D"].groupby(level="Code").shift(lag)
 
 for periods in [1, 2, 3, 5, 10, 20, 60]:
-    X[f"AdjVoChange{periods}D"] = (
-        bars_df["AdjVo"].groupby(level="Code").pct_change(periods=periods)
-    )
+    X[f"AdjVoChange{periods}D"] = code_vo.pct_change(periods=periods)
 
 for lag in range(1, 6):
     X[f"AdjVoChangeLag{lag}"] = X["AdjVoChange1D"].groupby(level="Code").shift(lag)
 
 # --- Target ---
 
-y = (
-    bars_df["AdjC"]
-    .groupby(level="Code", group_keys=False)
-    .apply(forward_returns, periods=1)
-)
+y = code_prices.apply(forward_returns, periods=1)
 
 assert X.index.equals(y.index)
 
