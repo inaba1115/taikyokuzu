@@ -117,7 +117,6 @@ for window in [2, 3, 5, 10, 20, 60]:
 # Drawdown
 X["Drawdown"] = bars_df["AdjC"].groupby(level="Code", group_keys=False).apply(drawdown)
 
-# Drawdown
 for window in [5, 10, 20, 60]:
     X[f"Drawdown_{window}D"] = (
         bars_df["AdjC"]
