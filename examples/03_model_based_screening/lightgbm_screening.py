@@ -97,16 +97,16 @@ rsi_features = (
     bars_df["AdjC"].groupby(level="Code", group_keys=False).apply(rsi).rename("RSI14")
 )
 
-volatility_features = (
-    bars_df["AdjC"]
-    .groupby(level="Code", group_keys=False)
-    .apply(rolling_volatility)
-    .rename("Volatility20")
-)
-
 X = X.join(macd_features)
 X = X.join(rsi_features)
-X = X.join(volatility_features)
+
+# Volatility
+for window in [2, 3, 5, 10, 20, 60]:
+    X[f"Volatility_{window}D"] = (
+        bars_df["AdjC"]
+        .groupby(level="Code", group_keys=False)
+        .apply(rolling_volatility, window=window)
+    )
 
 # Returns, Volume
 returns = bars_df["AdjC"].groupby(level="Code")
