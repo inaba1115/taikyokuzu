@@ -124,7 +124,7 @@ X["AdjVoChange1D"] = bars_df["AdjVo"].groupby(level="Code").pct_change()
 y = (
     bars_df["AdjC"]
     .groupby(level="Code", group_keys=False)
-    .apply(lambda x: forward_returns(x, periods=1))
+    .apply(forward_returns, periods=1)
 )
 
 assert X.index.equals(y.index)
