@@ -108,7 +108,7 @@ X = X.join(rsi_features)
 
 # Volatility
 for window in [5, 10, 20, 60]:
-    X[f"Volatility_{window}D"] = (
+    X[f"Volatility{window}D"] = (
         bars_df["AdjC"]
         .groupby(level="Code", group_keys=False)
         .apply(rolling_volatility, window=window)
@@ -118,22 +118,35 @@ for window in [5, 10, 20, 60]:
 X["Drawdown"] = bars_df["AdjC"].groupby(level="Code", group_keys=False).apply(drawdown)
 
 for window in [5, 10, 20, 60]:
-    X[f"Drawdown_{window}D"] = (
+    X[f"Drawdown{window}D"] = (
         bars_df["AdjC"]
         .groupby(level="Code", group_keys=False)
         .apply(rolling_drawdown, window=window)
     )
 
-# Returns, Volume
+# Returns
 returns = bars_df["AdjC"].groupby(level="Code")
 for periods in [1, 2, 3, 5, 10, 20, 60]:
-    X[f"Return_{periods}D"] = returns.pct_change(periods=periods)
+    X[f"Return{periods}D"] = returns.pct_change(periods=periods)
 
 for lag in range(1, 6):
-    X[f"Return_Lag{lag}"] = X["Return_1D"].groupby(level="Code").shift(lag)
+    X[f"ReturnLag{lag}"] = X["Return1D"].groupby(level="Code").shift(lag)
 
-X["VaChange1D"] = bars_df["Va"].groupby(level="Code").pct_change()
-X["AdjVoChange1D"] = bars_df["AdjVo"].groupby(level="Code").pct_change()
+# Volume
+va = bars_df["Va"].groupby(level="Code")
+for periods in [1, 2, 3, 5, 10, 20, 60]:
+    X[f"VaChange{periods}D"] = va.pct_change(periods=periods)
+
+for lag in range(1, 6):
+    X[f"VaChangeLag{lag}"] = X["VaChange1D"].groupby(level="Code").shift(lag)
+
+
+vo = bars_df["AdjVo"].groupby(level="Code")
+for periods in [1, 2, 3, 5, 10, 20, 60]:
+    X[f"AdjVoChange{periods}D"] = vo.pct_change(periods=periods)
+
+for lag in range(1, 6):
+    X[f"AdjVoChangeLag{lag}"] = X["AdjVoChange1D"].groupby(level="Code").shift(lag)
 
 # --- Target ---
 
