@@ -12,11 +12,7 @@ from taikyokuzu.features import (
     rolling_volatility,
     rsi,
 )
-from taikyokuzu.targets import (
-    forward_returns,
-    min_forward_returns,
-    stable_forward_returns,
-)
+from taikyokuzu.targets import forward_returns
 
 pd.set_option("display.unicode.east_asian_width", True)
 pd.set_option("display.max_colwidth", None)
@@ -79,9 +75,7 @@ bars_df = bars_df.loc[valid_codes]
 
 # --- Features ---
 
-code_prices = bars_df["AdjC"].groupby(level="Code", group_keys=False)
-code_va = bars_df["Va"].groupby(level="Code", group_keys=False)
-code_vo = bars_df["AdjVo"].groupby(level="Code", group_keys=False)
+bars_by_code = bars_df[["AdjC", "Va", "AdjVo"]].groupby(level="Code", group_keys=False)
 
 X = pd.DataFrame(index=bars_df.index)
 
@@ -96,7 +90,8 @@ X["Weekday"] = pd.Categorical(
 
 # Technical
 macd_features = (
-    code_prices.filter(lambda x: len(x) >= 100)  # データ不足の銘柄を除外
+    bars_by_code["AdjC"]
+    .filter(lambda x: len(x) >= 100)  # データ不足の銘柄を除外
     .groupby(level="Code", group_keys=False)
     .apply(macd)
 )
@@ -105,48 +100,48 @@ macd_features = (
 # macd_features["MACDNorm"] = macd_features["MACD"] / bars_df["AdjC"]
 # macd_features["MACDSignalNorm"] = macd_features["MACDSignal"] / bars_df["AdjC"]
 
-rsi_features = (
-    bars_df["AdjC"].groupby(level="Code", group_keys=False).apply(rsi).rename("RSI14")
-)
+rsi_features = bars_by_code["AdjC"].apply(rsi).rename("RSI14")
 
 X = X.join(macd_features)
 X = X.join(rsi_features)
 
 # Volatility
 for window in [5, 10, 20, 60]:
-    X[f"Volatility{window}D"] = code_prices.apply(rolling_volatility, window=window)
+    X[f"Volatility{window}D"] = bars_by_code["AdjC"].apply(
+        rolling_volatility, window=window
+    )
 
 # Drawdown
-X["Drawdown"] = code_prices.apply(drawdown)
+X["Drawdown"] = bars_by_code["AdjC"].apply(drawdown)
 
 for window in [5, 10, 20, 60]:
-    X[f"Drawdown{window}D"] = code_prices.apply(rolling_drawdown, window=window)
+    X[f"Drawdown{window}D"] = bars_by_code["AdjC"].apply(
+        rolling_drawdown, window=window
+    )
 
 # Returns
 for periods in [1, 2, 3, 5, 10, 20, 60]:
-    X[f"Return{periods}D"] = code_prices.pct_change(periods=periods)
+    X[f"Return{periods}D"] = bars_by_code["AdjC"].pct_change(periods=periods)
 
 for lag in range(1, 6):
     X[f"ReturnLag{lag}"] = X["Return1D"].groupby(level="Code").shift(lag)
 
 # Volume
 for periods in [1, 2, 3, 5, 10, 20, 60]:
-    X[f"VaChange{periods}D"] = code_va.pct_change(periods=periods)
+    X[f"VaChange{periods}D"] = bars_by_code["Va"].pct_change(periods=periods)
 
 for lag in range(1, 6):
     X[f"VaChangeLag{lag}"] = X["VaChange1D"].groupby(level="Code").shift(lag)
 
 for periods in [1, 2, 3, 5, 10, 20, 60]:
-    X[f"AdjVoChange{periods}D"] = code_vo.pct_change(periods=periods)
+    X[f"AdjVoChange{periods}D"] = bars_by_code["AdjVo"].pct_change(periods=periods)
 
 for lag in range(1, 6):
     X[f"AdjVoChangeLag{lag}"] = X["AdjVoChange1D"].groupby(level="Code").shift(lag)
 
 # --- Target ---
 
-y = code_prices.apply(forward_returns, periods=1)
-# y = code_prices.apply(min_forward_returns, periods=3)
-# y = code_prices.apply(stable_forward_returns, periods=3, penalty=0.5)
+y = bars_by_code["AdjC"].apply(forward_returns, periods=1)
 
 assert X.index.equals(y.index)
 
