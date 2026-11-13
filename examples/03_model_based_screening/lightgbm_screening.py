@@ -168,6 +168,10 @@ print("Missing feature ratio:")
 print(X_train.isna().mean().sort_values(ascending=False).head(20))
 print()
 
+gb = X_train.memory_usage(deep=True).sum() / (1024**3)
+print(f"Memory usage: {gb:.2f} GB")
+print()
+
 model = fit_lightgbm(X_train, y_train)
 alpha = predict_lightgbm(model, X_pred)
 
