@@ -125,25 +125,27 @@ for window in [5, 10, 20, 60]:
     )
 
 # Returns
-returns = bars_df["AdjC"].groupby(level="Code")
 for periods in [1, 2, 3, 5, 10, 20, 60]:
-    X[f"Return{periods}D"] = returns.pct_change(periods=periods)
+    X[f"Return{periods}D"] = (
+        bars_df["AdjC"].groupby(level="Code").pct_change(periods=periods)
+    )
 
 for lag in range(1, 6):
     X[f"ReturnLag{lag}"] = X["Return1D"].groupby(level="Code").shift(lag)
 
 # Volume
-va = bars_df["Va"].groupby(level="Code")
 for periods in [1, 2, 3, 5, 10, 20, 60]:
-    X[f"VaChange{periods}D"] = va.pct_change(periods=periods)
+    X[f"VaChange{periods}D"] = (
+        bars_df["Va"].groupby(level="Code").pct_change(periods=periods)
+    )
 
 for lag in range(1, 6):
     X[f"VaChangeLag{lag}"] = X["VaChange1D"].groupby(level="Code").shift(lag)
 
-
-vo = bars_df["AdjVo"].groupby(level="Code")
 for periods in [1, 2, 3, 5, 10, 20, 60]:
-    X[f"AdjVoChange{periods}D"] = vo.pct_change(periods=periods)
+    X[f"AdjVoChange{periods}D"] = (
+        bars_df["AdjVo"].groupby(level="Code").pct_change(periods=periods)
+    )
 
 for lag in range(1, 6):
     X[f"AdjVoChangeLag{lag}"] = X["AdjVoChange1D"].groupby(level="Code").shift(lag)
