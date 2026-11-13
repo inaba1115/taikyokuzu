@@ -5,7 +5,7 @@ from joblib import Memory
 
 from taikyokuzu.alpha import fit_lightgbm, predict_lightgbm
 from taikyokuzu.data import adjust_prices, load_bulk_data
-from taikyokuzu.features import macd, rolling_volatility, rsi
+from taikyokuzu.features import drawdown, macd, rolling_volatility, rsi
 from taikyokuzu.targets import forward_returns
 
 pd.set_option("display.unicode.east_asian_width", True)
@@ -107,6 +107,9 @@ for window in [2, 3, 5, 10, 20, 60]:
         .groupby(level="Code", group_keys=False)
         .apply(rolling_volatility, window=window)
     )
+
+# Drawdown
+X["Drawdown"] = bars_df["AdjC"].groupby(level="Code", group_keys=False).apply(drawdown)
 
 # Returns, Volume
 returns = bars_df["AdjC"].groupby(level="Code")
