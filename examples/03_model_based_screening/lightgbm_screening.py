@@ -89,6 +89,10 @@ macd_features = (
     .apply(macd)
 )
 
+# 正規化MACD
+# macd_features["MACDNorm"] = macd_features["MACD"] / bars_df["AdjC"]
+# macd_features["MACDSignalNorm"] = macd_features["MACDSignal"] / bars_df["AdjC"]
+
 rsi_features = (
     bars_df["AdjC"].groupby(level="Code", group_keys=False).apply(rsi).rename("RSI14")
 )
@@ -103,10 +107,6 @@ volatility_features = (
 X = X.join(macd_features)
 X = X.join(rsi_features)
 X = X.join(volatility_features)
-
-# 正規化MACD
-macd_features["MACDNorm"] = macd_features["MACD"] / bars_df["AdjC"]
-macd_features["MACDSignalNorm"] = macd_features["MACDSignal"] / bars_df["AdjC"]
 
 # Returns, Volume
 returns = bars_df["AdjC"].groupby(level="Code")
