@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import numpy as np
 import pandas as pd
 
 
@@ -9,12 +10,27 @@ def forward_returns(
     periods: int = 5,
 ) -> pd.Series:
     """
-    現在価格から ``periods`` 期間先までの forward return を計算する。
+    現在価格から ``periods`` 期間先までのforward returnを計算する。
+
+    Parameters
+    ----------
+    prices:
+        時系列順に並んだ価格Series。
+
+    periods:
+        将来リターンを計算する期間数。デフォルトは5。
+
+    Returns
+    -------
+    pd.Series
+        各時点から ``periods`` 期間先までの単純リターン。
+        必要な将来データが存在しない場合はNaNとする。
+        入力と同じindexを保持する。
 
     Notes
     -----
-    これは alpha feature ではなく、screening / model evaluation 用の
-    将来ラベルである。予測時点の feature として使用しないこと。
+    これはalpha featureではなく、screening / model evaluation用の
+    将来ラベルである。予測時点のfeatureとして使用しないこと。
     """
     _validate_positive_int(periods, name="periods")
     return prices.shift(-periods) / prices - 1.0
@@ -53,6 +69,45 @@ def min_forward_returns(
 
     result = pd.concat(series_list, axis=1).min(axis=1, skipna=False)
     result.name = "MinForwardReturn"
+
+    return result
+
+
+def stable_forward_returns(
+    prices: pd.Series,
+    *,
+    periods: int = 3,
+    penalty: float = 0.5,
+) -> pd.Series:
+    """将来の最低リターンから短期的な反落を減点したTargetを計算する。
+
+    Parameters
+    ----------
+    prices:
+        時系列順に並んだ価格Series。
+
+    periods:
+        将来リターンを評価する期間数。
+
+    penalty:
+        翌日リターンからの悪化に対するペナルティ係数。
+
+    Returns
+    -------
+    pd.Series
+        反落ペナルティを考慮したTarget。
+        必要な将来データが不足する場合はNaN。
+    """
+    _validate_positive_int(periods, name="periods")
+
+    if not np.isfinite(penalty) or penalty < 0:
+        raise ValueError("penalty must be finite and non-negative")
+
+    r1 = forward_returns(prices, periods=1)
+    rmin = min_forward_returns(prices, periods=periods)
+
+    result = rmin - penalty * (r1 - rmin)
+    result.name = "StableForwardReturn"
 
     return result
 

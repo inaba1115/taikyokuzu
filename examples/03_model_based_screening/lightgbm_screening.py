@@ -12,7 +12,7 @@ from taikyokuzu.features import (
     rolling_volatility,
     rsi,
 )
-from taikyokuzu.targets import forward_returns
+from taikyokuzu.targets import stable_forward_returns
 
 pd.set_option("display.unicode.east_asian_width", True)
 pd.set_option("display.max_colwidth", None)
@@ -140,7 +140,8 @@ for lag in range(1, 6):
 
 # --- Target ---
 
-y = code_prices.apply(forward_returns, periods=1)
+# y = code_prices.apply(forward_returns, periods=1)
+y = code_prices.apply(stable_forward_returns, periods=3, penalty=0.5)
 
 assert X.index.equals(y.index)
 
@@ -152,7 +153,9 @@ X[numeric_cols] = X[numeric_cols].replace([np.inf, -np.inf], np.nan)
 
 dates = X.index.get_level_values("Date")
 
-train_mask = (dates < target_date) & np.isfinite(y)
+train_mask = (dates < target_date) & np.isfinite(
+    y
+)  # targetのperiodsが変わってもNaNになるため問題無し
 pred_mask = (dates == target_date) & bars_df.loc[
     X.index, "AdjC"
 ].notna()  # target_dateに終値が存在する銘柄だけを予測する
