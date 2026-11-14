@@ -1,9 +1,9 @@
 import jquantsapi
+import lightgbm as lgb
 import numpy as np
 import pandas as pd
 from joblib import Memory
 
-from taikyokuzu.alpha import fit_lightgbm, predict_lightgbm
 from taikyokuzu.data import adjust_prices, load_bulk_data
 from taikyokuzu.features import (
     drawdown,
@@ -175,8 +175,39 @@ gb = X_train.memory_usage(deep=True).sum() / (1024**3)
 print(f"Memory usage: {gb:.2f} GB")
 print()
 
-model = fit_lightgbm(X_train, y_train)
-alpha = predict_lightgbm(model, X_pred)
+# --- LightGBM ---
+
+params = {
+    "objective": "regression",
+    "metric": "l2",
+    "learning_rate": 0.05,
+    "num_leaves": 15,
+    "min_data_in_leaf": 20,
+    "verbosity": -1,
+    "seed": 42,
+}
+
+train_set = lgb.Dataset(
+    X_train,
+    label=y_train,
+    categorical_feature="auto",
+)
+
+model = lgb.train(
+    params,
+    train_set,
+    num_boost_round=100,
+)
+
+predictions = model.predict(X_pred, validate_features=True)
+
+alpha = pd.Series(
+    np.asarray(predictions, dtype=float).reshape(-1),
+    index=X_pred.index,
+    name="Alpha",
+)
+
+# --- Feature Importance ---
 
 importance = pd.Series(
     model.feature_importance(importance_type="gain"),
