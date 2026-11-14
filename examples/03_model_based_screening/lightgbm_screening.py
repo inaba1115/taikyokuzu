@@ -147,7 +147,7 @@ assert X.index.equals(y.index)
 
 # --- Fit/Predict ---
 
-# 無限大はnanにしておく
+# 無限大はNaNにしておく
 numeric_cols = X.select_dtypes(include="number").columns
 X[numeric_cols] = X[numeric_cols].replace([np.inf, -np.inf], np.nan)
 
