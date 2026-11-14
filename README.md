@@ -1,4 +1,4 @@
-# design
+# project
 - データ取得、可視化
   - data: jquantsや金利データなどを取得する
   - plotting: 各種可視化
@@ -16,3 +16,12 @@
   - pricing: プライシング理論
   - risk: リスク管理
   - ; featuresに入れれるのはそっちで良い
+
+# design
+- アーキ
+  - MACDゴールデンクロス
+  - forward_returns(1)
+  - リスク管理(ポートフォリオ)
+  - トレーリングストップ
+- memo
+  forward_returns(5)とかでも良い。バックテストでパラメタ決めて良い
